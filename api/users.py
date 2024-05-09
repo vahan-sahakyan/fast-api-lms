@@ -13,15 +13,21 @@ router = fastapi.APIRouter()
 
 @router.get("/users", response_model=List[User])
 async def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    users = get_users(db, skip=skip, limit=limit)
+    users = get_users(db, skip, limit)
     return users
 
 
-@router.post("/users")
+@router.post("/users", response_model=User, status_code=201)
 async def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
-    return create_user(db=db, user=user)
+    db_user = get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return create_user(db, user)
 
 
 @router.get("/users/{user_id}")
 async def read_user(user_id: int, db: Session = Depends(get_db)):
-    return get_user(db=db, user_id=user_id)
+    db_user = get_user(db, user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
